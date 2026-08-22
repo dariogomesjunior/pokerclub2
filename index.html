@@ -10,7 +10,18 @@
 
   <style>
     body { font-family: sans-serif; background: #0e1e13; color: #fff; padding: 20px; max-width: 950px; margin: auto; }
-    h2 { color: #ffd700; text-align: center; margin-bottom: 15px; }
+    
+    /* TÍTULO AUMENTADO E COM MAIS DESTAQUE */
+    h1.main-title { 
+      color: #ffd700; 
+      text-align: center; 
+      margin: 10px 0 25px 0; 
+      font-size: 2.8rem; 
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+    }
     
     .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #2a4733; padding-bottom: 10px; }
     .tab-btn { background: #1a2e20; color: #aaa; border: 1px solid #2a4733; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 4px; }
@@ -72,7 +83,7 @@
         width: 80mm; font-size: 12pt;
       }
       .ticket { padding: 8px; text-align: center; }
-      .ticket h2 { font-size: 18pt; color: #000; margin: 5px 0; text-transform: uppercase; }
+      .ticket h2 { font-size: 20pt; color: #000; margin: 5px 0; text-transform: uppercase; font-weight: 900; }
       .ticket h3 { font-size: 14pt; color: #000; margin: 5px 0; }
       .ticket-row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 11pt; }
       .line { border-bottom: 2px solid #000; margin: 10px 0; }
@@ -83,7 +94,7 @@
 </head>
 <body>
 
-  <h2>♣ Tiachi - Caixas & Jogadores 🌐</h2>
+  <h1 class="main-title">♣ TIANCHI 🌐</h1>
 
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('caixa')">💵 Movimentação de Caixa</button>
@@ -195,7 +206,7 @@
   <script>
     // CONFIGURAÇÃO DO SUPABASE
     const SUPABASE_URL = "https://jmixkymwdbtbrihxoigk.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptaXhreW13ZGJ0YnJpaHhvaWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNTUyMzQsImV4cCI6MjEwMjkzMTIzNH0.4T8EVhYR9X0bTBI99H-VszMupJhHy2-p3ToXtB2iErM"; // Cole a sua chave que começa com eyJ...
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptaXhreW13ZGJ0YnJpaHhvaWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNTUyMzQsImV4cCI6MjEwMjkzMTIzNH0.4T8EVhYR9X0bTBI99H-VszMupJhHy2-p3ToXtB2iErM";
     
     // Inicialização do cliente Supabase
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -516,7 +527,7 @@
 
       printArea.innerHTML = `
         <div class="ticket">
-          <h2>TIACHI</h2>
+          <h2>TIANCHI</h2>
           <h3>COMPROVANTE</h3>
           <div class="line"></div>
           <div class="ticket-row"><span>DATA:</span> <span>${tx.date}</span></div>
@@ -541,7 +552,7 @@
 
       let html = `
         <div class="ticket">
-          <h2>TIACHI</h2>
+          <h2>TIANCHI</h2>
           <h3>RELATÓRIO GERAL</h3>
           <p>${new Date().toLocaleString('pt-BR')}</p>
           <div class="line"></div>
