@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Poker Club - Caixas & Jogadores (Supabase Cloud)</title>
   
-  <!-- SDK do Supabase JS via CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SDK do Supabase JS via CDN (Versao Estavel UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
 
   <style>
     body { font-family: sans-serif; background: #0e1e13; color: #fff; padding: 20px; max-width: 950px; margin: auto; }
@@ -191,9 +191,11 @@
   <div id="print-area"></div>
 
   <script>
-    // CONFIGURAÇÃO DO SUPABASE (Substitua pelos seus dados)
+    // CONFIGURAÇÃO DO SUPABASE
     const SUPABASE_URL = "https://jmixkymwdbtbrihxoigk.supabase.co";
     const SUPABASE_KEY = "sb_publishable_V4X5xGj4bUkVt8xsJ4u8VQ_Vg7dQ9lK";
+    
+    // Inicialização do cliente Supabase
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let globalPlayers = [];
@@ -259,7 +261,7 @@
       const name = document.getElementById('newPlayerName').value.trim();
       const phone = document.getElementById('newPlayerPhone').value.trim() || '-';
       const pix = document.getElementById('newPlayerPix').value.trim() || '-';
-      const birth = document.getElementById('newPlayerBirth').value || '';
+      const birth = document.getElementById('newPlayerBirth').value || null;
 
       if (editId) {
         const { error } = await supabaseClient.from('players').update({ name, phone, pix, birth }).eq('id', editId);
@@ -269,7 +271,8 @@
           alert('Este jogador já está cadastrado!');
           return;
         }
-        const { error } = await supabaseClient.from('players').insert([{ id: Date.now(), name, phone, pix, birth }]);
+        // ID gerado automaticamente pelo banco Postgres
+        const { error } = await supabaseClient.from('players').insert([{ name, phone, pix, birth }]);
         if (error) alert('Erro ao salvar jogador: ' + error.message);
       }
 
@@ -363,8 +366,9 @@
         return;
       }
 
+      // ID gerado automaticamente pelo banco Postgres
       const { error } = await supabaseClient.from('transactions').insert([
-        { id: Date.now(), date, name, method, amount, desc_obs }
+        { date, name, method, amount, desc_obs }
       ]);
 
       if (error) {
