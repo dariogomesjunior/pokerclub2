@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Poker Club - Tianchi (Supabase Cloud)</title>
+  <title>Tiachi - Caixas & Jogadores</title>
   
   <!-- SDK do Supabase JS via CDN (Versão Estável UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
@@ -57,7 +57,7 @@
     .badge-pix { color: #cc5de8; font-weight: bold; }
     .badge-paga-vale { color: #fcc419; font-weight: bold; }
     .badge-devolucao { color: #ff922b; font-weight: bold; }
-    .badge-despesa { color: #ff4757; font-weight: bold; } /* Novo badge para despesas */
+    .badge-despesa { color: #ff4757; font-weight: bold; }
     
     #print-area { display: none; }
 
@@ -83,7 +83,7 @@
 </head>
 <body>
 
-  <h2>♣ Poker Club - Caixas & Jogadores 🌐</h2>
+  <h2>♣ Tiachi - Caixas & Jogadores 🌐</h2>
 
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('caixa')">💵 Movimentação de Caixa</button>
@@ -134,7 +134,7 @@
         <option value="DINHEIRO">💵 Dinheiro (Entrada)</option>
         <option value="CARTAO">💳 Cartão (Entrada)</option>
         <option value="VALE">📝 Vale / Pegou Ficha (Dívida)</option>
-        <option value="PAGAR>💚 Pagar Vale em Dinheiro/PIX</option>
+        <option value="PAGAR_VALE">💚 Pagar Vale em Dinheiro/PIX</option>
         <option value="DEVOLUCAO">🔄 Devolução de Ficha (Abater Vale / Saída)</option>
         <option value="DESPESA">🔻 Retirada para Despesa (Saída)</option>
       </select>
@@ -195,7 +195,7 @@
   <script>
     // CONFIGURAÇÃO DO SUPABASE
     const SUPABASE_URL = "https://jmixkymwdbtbrihxoigk.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptaXhreW13ZGJ0YnJpaHhvaWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNTUyMzQsImV4cCI6MjEwMjkzMTIzNH0.4T8EVhYR9X0bTBI99H-VszMupJhHy2-p3ToXtB2iErM"; // Cole a sua chave que começa com eyJ...
+    const SUPABASE_KEY = "SUA_CHAVE_ANON_PUBLIC_AQUI"; // Cole a sua chave que começa com eyJ...
     
     // Inicialização do cliente Supabase
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -398,7 +398,7 @@
         }
 
         if (tx.method === 'DESPESA') {
-          totalSaidasCaixa += tx.amount; // Subtrai diretamente do caixa líquido
+          totalSaidasCaixa += tx.amount;
         }
 
         if (tx.method === 'VALE') {
@@ -516,7 +516,7 @@
 
       printArea.innerHTML = `
         <div class="ticket">
-          <h2>POKER CLUB</h2>
+          <h2>TIACHI</h2>
           <h3>COMPROVANTE</h3>
           <div class="line"></div>
           <div class="ticket-row"><span>DATA:</span> <span>${tx.date}</span></div>
@@ -541,7 +541,7 @@
 
       let html = `
         <div class="ticket">
-          <h2>POKER CLUB</h2>
+          <h2>TIACHI</h2>
           <h3>RELATÓRIO GERAL</h3>
           <p>${new Date().toLocaleString('pt-BR')}</p>
           <div class="line"></div>
