@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Poker Club - Caixas & Jogadores (Supabase Cloud)</title>
   
-  <!-- SDK do Supabase JS via CDN (Versao Estavel UMD) -->
+  <!-- SDK do Supabase JS via CDN (Versão Estável UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
 
   <style>
@@ -57,6 +57,7 @@
     .badge-pix { color: #cc5de8; font-weight: bold; }
     .badge-paga-vale { color: #fcc419; font-weight: bold; }
     .badge-devolucao { color: #ff922b; font-weight: bold; }
+    .badge-despesa { color: #ff4757; font-weight: bold; } /* Novo badge para despesas */
     
     #print-area { display: none; }
 
@@ -135,10 +136,11 @@
         <option value="VALE">📝 Vale / Pegou Ficha (Dívida)</option>
         <option value="PAGAR_VALE">💚 Pagar Vale em Dinheiro/PIX</option>
         <option value="DEVOLUCAO">🔄 Devolução de Ficha (Abater Vale / Saída)</option>
+        <option value="DESPESA">🔻 Retirada para Despesa (Saída)</option>
       </select>
 
       <input type="number" id="amount" step="0.01" placeholder="Valor (R$)" required>
-      <input type="text" id="desc" placeholder="Obs ex: Dev. 100 em fichas">
+      <input type="text" id="desc" placeholder="Obs ex: Compra de bebidas / Bebida">
       <button type="submit">Lançar</button>
     </form>
 
@@ -193,7 +195,7 @@
   <script>
     // CONFIGURAÇÃO DO SUPABASE
     const SUPABASE_URL = "https://jmixkymwdbtbrihxoigk.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptaXhreW13ZGJ0YnJpaHhvaWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNTUyMzQsImV4cCI6MjEwMjkzMTIzNH0.4T8EVhYR9X0bTBI99H-VszMupJhHy2-p3ToXtB2iErM";
+    const SUPABASE_KEY = "SUA_CHAVE_ANON_PUBLIC_AQUI"; // Cole a sua chave que começa com eyJ...
     
     // Inicialização do cliente Supabase
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -271,7 +273,6 @@
           alert('Este jogador já está cadastrado!');
           return;
         }
-        // ID gerado automaticamente pelo banco Postgres
         const { error } = await supabaseClient.from('players').insert([{ name, phone, pix, birth }]);
         if (error) alert('Erro ao salvar jogador: ' + error.message);
       }
@@ -366,7 +367,6 @@
         return;
       }
 
-      // ID gerado automaticamente pelo banco Postgres
       const { error } = await supabaseClient.from('transactions').insert([
         { date, name, method, amount, desc_obs }
       ]);
@@ -395,6 +395,10 @@
 
         if (tx.method === 'DINHEIRO' || tx.method === 'CARTAO' || tx.method === 'PIX' || tx.method === 'PAGAR_VALE') {
           totalEntradasBrutas += tx.amount;
+        }
+
+        if (tx.method === 'DESPESA') {
+          totalSaidasCaixa += tx.amount; // Subtrai diretamente do caixa líquido
         }
 
         if (tx.method === 'VALE') {
@@ -433,6 +437,9 @@
         } else if (tx.method === 'DEVOLUCAO') {
           methodClass = 'badge-devolucao';
           labelText = 'DEV. FICHA';
+        } else if (tx.method === 'DESPESA') {
+          methodClass = 'badge-despesa';
+          labelText = 'DESPESA';
         }
 
         const row = document.createElement('tr');
@@ -505,6 +512,7 @@
       let methodText = tx.method;
       if (tx.method === 'PAGAR_VALE') methodText = 'PAGAMENTO DE VALE';
       if (tx.method === 'DEVOLUCAO') methodText = 'DEVOLUCAO DE FICHA';
+      if (tx.method === 'DESPESA') methodText = 'RETIRADA PARA DESPESA';
 
       printArea.innerHTML = `
         <div class="ticket">
@@ -512,7 +520,7 @@
           <h3>COMPROVANTE</h3>
           <div class="line"></div>
           <div class="ticket-row"><span>DATA:</span> <span>${tx.date}</span></div>
-          <div class="ticket-row"><span>JOGADOR:</span> <span><b>${tx.name.toUpperCase()}</b></span></div>
+          <div class="ticket-row"><span>RESPONSÁVEL:</span> <span><b>${tx.name.toUpperCase()}</b></span></div>
           <div class="ticket-row"><span>TIPO:</span> <span><b>${methodText}</b></span></div>
           <div class="ticket-row"><span>OBS:</span> <span>${tx.desc_obs}</span></div>
           <div class="valor-destaque">
@@ -521,7 +529,7 @@
           <div class="line"></div>
           <br><br>
           <p>___________________________________</p>
-          <p>Assinatura do Cliente</p>
+          <p>Assinatura</p>
           <div class="cut-space"></div>
         </div>
       `;
@@ -539,7 +547,7 @@
           <div class="line"></div>
       `;
 
-      let totalPix = 0, totalDinheiro = 0, totalCartao = 0, totalVale = 0, totalPagoVale = 0, totalDevolucao = 0;
+      let totalPix = 0, totalDinheiro = 0, totalCartao = 0, totalVale = 0, totalPagoVale = 0, totalDevolucao = 0, totalDespesas = 0;
 
       globalTransactions.forEach(t => {
         const val = Number(t.amount);
@@ -549,10 +557,12 @@
         if (t.method === 'VALE') totalVale += val;
         if (t.method === 'PAGAR_VALE') totalPagoVale += val;
         if (t.method === 'DEVOLUCAO') totalDevolucao += val;
+        if (t.method === 'DESPESA') totalDespesas += val;
 
         let labelText = t.method;
         if (t.method === 'PAGAR_VALE') labelText = 'PAGOU VALE';
         if (t.method === 'DEVOLUCAO') labelText = 'DEV. FICHA';
+        if (t.method === 'DESPESA') labelText = 'DESPESA';
 
         html += `
           <div class="ticket-row">
@@ -563,7 +573,7 @@
       });
 
       const txsCronologicas = [...globalTransactions].reverse();
-      let saídasReais = 0;
+      let saídasReaisDevolucao = 0;
       const playerVales = {};
 
       txsCronologicas.forEach(tx => {
@@ -574,7 +584,7 @@
         if (tx.method === 'DEVOLUCAO') {
           const v = playerVales[tx.name];
           if (val > v) {
-            saídasReais += (val - v);
+            saídasReaisDevolucao += (val - v);
             playerVales[tx.name] = 0;
           } else {
             playerVales[tx.name] -= val;
@@ -584,7 +594,7 @@
 
       const totalValesAbertos = Object.values(playerVales).reduce((acc, v) => acc + v, 0);
       const entradasTotais = totalPix + totalDinheiro + totalCartao + totalPagoVale;
-      const caixaFinal = entradasTotais - saídasReais;
+      const caixaFinal = entradasTotais - (saídasReaisDevolucao + totalDespesas);
 
       html += `
         <div class="line"></div>
@@ -592,8 +602,8 @@
         <div class="ticket-row"><span>ENTRADAS DINHEIRO:</span> <span>R$ ${totalDinheiro.toFixed(2)}</span></div>
         <div class="ticket-row"><span>ENTRADAS CARTÃO:</span> <span>R$ ${totalCartao.toFixed(2)}</span></div>
         <div class="ticket-row"><span>VALES QUITADOS:</span> <span>R$ ${totalPagoVale.toFixed(2)}</span></div>
-        <div class="ticket-row"><span>TOTAL DEVOLUÇÃO FICHAS:</span> <span>R$ ${totalDevolucao.toFixed(2)}</span></div>
-        <div class="ticket-row"><span>SAÍDAS REAIS DE CAIXA:</span> <span>- R$ ${saídasReais.toFixed(2)}</span></div>
+        <div class="ticket-row"><span>DEV. FICHAS (SAÍDA):</span> <span>- R$ ${saídasReaisDevolucao.toFixed(2)}</span></div>
+        <div class="ticket-row"><span>RETIRADA DESPESAS:</span> <span>- R$ ${totalDespesas.toFixed(2)}</span></div>
         <div class="ticket-row"><span>VALES EM ABERTO:</span> <span>R$ ${totalValesAbertos.toFixed(2)}</span></div>
         <div class="line"></div>
         <div class="ticket-row"><span>CAIXA LÍQUIDO FINAL:</span> <span>R$ ${caixaFinal.toFixed(2)}</span></div>
