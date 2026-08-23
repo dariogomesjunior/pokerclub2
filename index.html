@@ -89,12 +89,15 @@
       @page { margin: 0; }
       body * { visibility: hidden; }
       #print-area, #print-area * { visibility: visible; }
-      #print-area { display: block !important; position: absolute; left: 0; top: 0; color: #000; font-family: 'Courier New', monospace; font-weight: bold; width: 80mm; font-size: 11pt; }
+      #print-area { display: block !important; position: absolute; left: 0; top: 0; color: #000; font-family: 'Courier New', monospace; font-weight: bold; width: 80mm; font-size: 9pt; }
       .ticket { padding: 8px; text-align: center; }
-      .ticket h2 { font-size: 18pt; margin: 5px 0; text-transform: uppercase; }
-      .ticket-row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 10pt; }
+      .ticket h2 { font-size: 16pt; margin: 5px 0; text-transform: uppercase; }
+      .ticket h3 { font-size: 12pt; margin: 3px 0; }
+      .ticket-row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 9pt; }
+      .print-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 8pt; text-align: left; }
+      .print-table th, .print-table td { border-bottom: 1px dashed #000; padding: 3px 0; color: #000; }
       .line { border-bottom: 2px solid #000; margin: 8px 0; }
-      .valor-destaque { font-size: 14pt; margin: 8px 0; border: 2px solid #000; padding: 4px; }
+      .valor-destaque { font-size: 13pt; margin: 8px 0; border: 2px solid #000; padding: 4px; }
       .cut-space { height: 60px; display: block; }
     }
   </style>
@@ -117,12 +120,13 @@
   <!-- STATUS DA SESSÃO / FECHAMENTO DA MESA -->
   <div class="status-bar">
     <div>
-      <span>Sessão Atual: </span>
-      <span id="sessionStatusBadge" class="status-badge status-fechada">FECHADA</span>
+      <span>Caixa/Sessão: </span>
+      <span id="sessionStatusBadge" class="status-badge status-fechada">FECHADO</span>
       <span id="sessionInfo" style="font-size: 0.85rem; margin-left: 10px; color: #aaa;"></span>
     </div>
     <div>
-      <button id="btnToggleSession" class="btn-session" onclick="toggleSession()">🔓 Abrir Nova Mesa / Sessão</button>
+      <!-- BOTÃO PRINCIPAL DE FECHAMENTO -->
+      <button id="btnToggleSession" class="btn-session" onclick="toggleSession()">🔓 Abrir Caixa</button>
       <button onclick="logout()" style="background: #444; color: #fff; margin-left: 5px;">Sair</button>
     </div>
   </div>
@@ -175,7 +179,8 @@
       </div>
       <div class="right-btns">
         <button class="btn-sync" onclick="syncAll()">🔄 Atualizar</button>
-        <button class="btn-print-all" onclick="printAll()">🖨️ Imprimir Fechamento</button>
+        <!-- BOTÃO SECUNDÁRIO APENAS PARA IMPRIMIR -->
+        <button class="btn-print-all" onclick="printAll()">🖨️ Imprimir Fechamento de Caixa</button>
       </div>
     </div>
 
@@ -313,30 +318,34 @@
 
       if (data && data.length > 0) {
         currentSession = data[0];
-        badge.innerText = "MESA ABERTA";
+        badge.innerText = "CAIXA ABERTO";
         badge.className = "status-badge status-aberta";
-        info.innerText = `Aberta em: ${currentSession.opened_at}`;
-        btn.innerText = "🔒 Fechar Mesa Atual";
+        info.innerText = `Aberto em: ${currentSession.opened_at}`;
+        
+        // BOTÃO MUDA PARA "FECHAMENTO DE CAIXA"
+        btn.innerText = "🔒 Realizar Fechamento de Caixa";
         btn.style.background = "#c92a2a";
       } else {
         currentSession = null;
-        badge.innerText = "MESA FECHADA";
+        badge.innerText = "CAIXA FECHADO";
         badge.className = "status-badge status-fechada";
-        info.innerText = "Nenhuma mesa em andamento";
-        btn.innerText = "🔓 Abrir Nova Mesa / Sessão";
+        info.innerText = "Nenhum caixa em andamento";
+        
+        btn.innerText = "🔓 Abrir Novo Caixa";
         btn.style.background = "#e8590c";
       }
     }
 
     async function toggleSession() {
       if (currentSession) {
-        if (!confirm('Deseja realmente FECHAR a mesa atual e gerar o relatório?')) return;
+        if (!confirm('Deseja realmente REALIZAR O FECHAMENTO DO CAIXA e imprimir o relatório completo?')) return;
         
         await supabaseClient.from('sessions').update({ 
           status: 'fechada', 
           closed_at: new Date().toLocaleString('pt-BR') 
         }).eq('id', currentSession.id);
 
+        // Dispara a impressão completa de todas as movimentações imediatamente após fechar
         printAll();
         syncAll();
       } else {
@@ -563,7 +572,7 @@
         if (tx.method === 'VALE') playerVales[tx.name] += Number(tx.amount);
         if (tx.method === 'PAGAR_VALE') playerVales[tx.name] = Math.max(0, playerVales[tx.name] - Number(tx.amount));
         if (tx.method === 'DEVOLUCAO') {
-          const valeAtual = playerVales[tx.name];
+          const valeAtual = playerVales[tx.name] || 0;
           if (Number(tx.amount) <= valeAtual) {
             playerVales[tx.name] -= Number(tx.amount);
           } else {
@@ -640,7 +649,7 @@
       syncAll();
     }
 
-    // IMPRESSÃO
+    // IMPRESSÃO DE TICKET INDIVIDUAL
     function printSingle(id) {
       const tx = globalTransactions.find(t => t.id === id);
       if (!tx) return;
@@ -666,22 +675,42 @@
       window.print();
     }
 
+    // IMPRESSÃO COMPLETA DO FECHAMENTO DE CAIXA
     function printAll() {
       const printArea = document.getElementById('print-area');
       let html = `
         <div class="ticket">
           <h2>TIANCHI POKER</h2>
           <h3>FECHAMENTO DE CAIXA</h3>
-          <p>${new Date().toLocaleString('pt-BR')}</p>
+          <p>Emitido em: ${new Date().toLocaleString('pt-BR')}</p>
           <div class="line"></div>
+          <p><b>MOVIMENTAÇÕES DETALHADAS</b></p>
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Obs</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
       `;
 
       let totalPix = 0, totalDinheiro = 0, totalCartao = 0, totalVale = 0, totalPagoVale = 0, totalRake = 0, totalDespesas = 0;
 
       let txs = [...globalTransactions];
-      if (currentSession) txs = txs.filter(t => t.session_id === currentSession.id);
+      
+      // Se houver uma sessão aberta ou acabou de ser fechada (pega o último lote)
+      if (currentSession) {
+          txs = txs.filter(t => t.session_id === currentSession.id);
+      }
 
-      txs.forEach(t => {
+      // Ordena cronologicamente para a listagem impressa
+      const txsOrdenadas = [...txs].reverse();
+
+      txsOrdenadas.forEach(t => {
         const val = Number(t.amount);
         if (t.method === 'PIX') totalPix += val;
         if (t.method === 'DINHEIRO') totalDinheiro += val;
@@ -690,21 +719,40 @@
         if (t.method === 'PAGAR_VALE') totalPagoVale += val;
         if (t.method === 'RAKE') totalRake += val;
         if (t.method === 'DESPESA') totalDespesas += val;
+
+        const hora = t.date ? t.date.split(' ')[1] || t.date : '-';
+
+        // Aqui lista TODAS AS MOVIMENTAÇÕES
+        html += `
+          <tr>
+            <td>${hora}</td>
+            <td>${t.name}</td>
+            <td>${t.method}</td>
+            <td>${t.desc_obs}</td>
+            <td>R$ ${val.toFixed(2)}</td>
+          </tr>
+        `;
       });
 
       const totalEntradas = totalPix + totalDinheiro + totalCartao + totalPagoVale + totalRake;
       const caixaFinal = totalEntradas - totalDespesas;
 
       html += `
-        <div class="ticket-row"><span>ENTRADAS PIX:</span> <span>R$ ${totalPix.toFixed(2)}</span></div>
-        <div class="ticket-row"><span>ENTRADAS DINHEIRO:</span> <span>R$ ${totalDinheiro.toFixed(2)}</span></div>
-        <div class="ticket-row"><span>ENTRADAS CARTÃO:</span> <span>R$ ${totalCartao.toFixed(2)}</span></div>
-        <div class="ticket-row"><span>VALES QUITADOS:</span> <span>R$ ${totalPagoVale.toFixed(2)}</span></div>
-        <div class="ticket-row"><span>RAKE DA CASA:</span> <span>R$ ${totalRake.toFixed(2)}</span></div>
-        <div class="ticket-row"><span>RETIRADA DESPESAS:</span> <span>- R$ ${totalDespesas.toFixed(2)}</span></div>
-        <div class="line"></div>
-        <div class="ticket-row"><span>CAIXA LÍQUIDO:</span> <span>R$ ${caixaFinal.toFixed(2)}</span></div>
-        <div class="cut-space"></div>
+            </tbody>
+          </table>
+          <div class="line"></div>
+          <p><b>RESUMO DO FECHAMENTO</b></p>
+          <div class="ticket-row"><span>PIX (Entradas):</span> <span>R$ ${totalPix.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>DINHEIRO (Entradas):</span> <span>R$ ${totalDinheiro.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>CARTÃO (Entradas):</span> <span>R$ ${totalCartao.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>VALES QUITADOS:</span> <span>R$ ${totalPagoVale.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>RAKE DA CASA:</span> <span>R$ ${totalRake.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>DESPESAS (Saídas):</span> <span>- R$ ${totalDespesas.toFixed(2)}</span></div>
+          <div class="line"></div>
+          <div class="ticket-row" style="font-size: 11pt; font-weight: bold;">
+            <span>CAIXA LÍQUIDO FINAL:</span> <span>R$ ${caixaFinal.toFixed(2)}</span>
+          </div>
+          <div class="cut-space"></div>
         </div>
       `;
 
