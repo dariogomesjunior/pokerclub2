@@ -125,7 +125,6 @@
       <span id="sessionInfo" style="font-size: 0.85rem; margin-left: 10px; color: #aaa;"></span>
     </div>
     <div>
-      <!-- BOTÃO PRINCIPAL DE FECHAMENTO -->
       <button id="btnToggleSession" class="btn-session" onclick="toggleSession()">🔓 Abrir Caixa</button>
       <button onclick="logout()" style="background: #444; color: #fff; margin-left: 5px;">Sair</button>
     </div>
@@ -179,7 +178,6 @@
       </div>
       <div class="right-btns">
         <button class="btn-sync" onclick="syncAll()">🔄 Atualizar</button>
-        <!-- BOTÃO SECUNDÁRIO APENAS PARA IMPRIMIR -->
         <button class="btn-print-all" onclick="printAll()">🖨️ Imprimir Fechamento de Caixa</button>
       </div>
     </div>
@@ -427,8 +425,8 @@
       globalTransactions.forEach(t => {
         if (t.name && t.name !== 'CASA / RAKE' && t.name !== 'DESPESA CASA') {
           if (!debts[t.name]) debts[t.name] = 0;
-          if (t.method === 'VALE') debts[t.name] += Number(t.amount);
-          if (t.method === 'PAGAR_VALE' || t.method === 'DEVOLUCAO') debts[t.name] -= Number(t.amount);
+          if (t.method === 'VALE') debts[t.name] += Number(t.amount) || 0;
+          if (t.method === 'PAGAR_VALE' || t.method === 'DEVOLUCAO') debts[t.name] -= Number(t.amount) || 0;
         }
       });
 
@@ -528,7 +526,7 @@
       }
     });
 
-    // CÁLCULO DE CAIXA CORRIGIDO
+    // CÁLCULO DE CAIXA
     function renderTable() {
       const tableBody = document.getElementById('tableBody');
       const filterPlayer = document.getElementById('filterTablePlayer').value;
@@ -538,8 +536,9 @@
 
       let txs = [...globalTransactions];
 
+      // CORREÇÃO CRÍTICA: Comparar IDs como String para evitar incompatibilidade entre número e string
       if (filterSession === 'atual' && currentSession) {
-        txs = txs.filter(t => t.session_id === currentSession.id);
+        txs = txs.filter(t => String(t.session_id) === String(currentSession.id));
       }
 
       if (filterPlayer) {
@@ -551,46 +550,53 @@
       let totalRakeTotal = 0;
       const playerVales = {};
 
-      // Ordena cronologicamente por ID para calcular saldos na ordem certa
-      const txsCronologicas = [...txs].sort((a, b) => a.id - b.id);
+      // Ordenar cronologicamente para calcular a sequência de saldos/vales
+      const txsCronologicas = [...txs].sort((a, b) => Number(a.id) - Number(b.id));
 
       txsCronologicas.forEach(tx => {
-        const val = Number(tx.amount);
+        const val = Number(tx.amount) || 0;
         if (!playerVales[tx.name]) playerVales[tx.name] = 0;
 
+        // Entradas em dinheiro/pix/cartão/pagamento de vale
         if (['DINHEIRO', 'CARTAO', 'PIX', 'PAGAR_VALE'].includes(tx.method)) {
           totalEntradasBrutas += val;
         }
 
+        // Rake da casa conta como entrada
         if (tx.method === 'RAKE') {
           totalRakeTotal += val;
           totalEntradasBrutas += val;
         }
 
+        // Retirada de despesas sai do caixa
         if (tx.method === 'DESPESA') {
           totalSaidasCaixa += val;
         }
 
+        // Pegar ficha no vale aumenta dívida
         if (tx.method === 'VALE') {
           playerVales[tx.name] += val;
         }
 
+        // Pagamento de vale diminui dívida
         if (tx.method === 'PAGAR_VALE') {
           playerVales[tx.name] = Math.max(0, playerVales[tx.name] - val);
         }
 
+        // Devolução de ficha
         if (tx.method === 'DEVOLUCAO') {
           const valeAtual = playerVales[tx.name] || 0;
           if (val <= valeAtual) {
             playerVales[tx.name] -= val;
           } else {
+            // O que exceder o vale atual é pago ao jogador (saída do caixa)
             totalSaidasCaixa += (val - valeAtual);
             playerVales[tx.name] = 0;
           }
         }
       });
 
-      // Renderiza na tabela do mais recente para o mais antigo
+      // Renderizar a tabela no formato original
       txs.forEach(tx => {
         let methodClass = 'badge-vale';
         let labelText = tx.method;
@@ -607,9 +613,9 @@
         row.innerHTML = `
           <td style="font-size:0.8rem;">${tx.date}</td>
           <td><b>${tx.name}</b></td>
-          <td class="${methodClass}">${labelText}</td>
-          <td>${tx.desc_obs}</td>
-          <td>R$ ${Number(tx.amount).toFixed(2)}</td>
+          <td><span class="${methodClass}">${labelText}</span></td>
+          <td>${tx.desc_obs || '-'}</td>
+          <td>R$ ${Number(tx.amount || 0).toFixed(2)}</td>
           <td style="white-space:nowrap;">
             <button class="btn-edit" onclick="printSingle(${tx.id})">🖨️</button>
             <button class="btn-del" onclick="deleteTx(${tx.id})">X</button>
@@ -621,6 +627,7 @@
       const totalValesPendentes = Object.values(playerVales).reduce((acc, val) => acc + val, 0);
       const caixaLiquido = totalEntradasBrutas - totalSaidasCaixa;
 
+      // ATUALIZA OS CARDS DA TELA
       document.getElementById('totalEntradas').innerText = `R$ ${caixaLiquido.toFixed(2)}`;
       document.getElementById('totalRake').innerText = `R$ ${totalRakeTotal.toFixed(2)}`;
       document.getElementById('totalVales').innerText = `R$ ${totalValesPendentes.toFixed(2)}`;
@@ -640,8 +647,8 @@
       let debt = 0;
       globalTransactions.forEach(t => {
         if (t.name === selectedPlayer) {
-          if (t.method === 'VALE') debt += Number(t.amount);
-          if (t.method === 'PAGAR_VALE' || t.method === 'DEVOLUCAO') debt -= Number(t.amount);
+          if (t.method === 'VALE') debt += Number(t.amount) || 0;
+          if (t.method === 'PAGAR_VALE' || t.method === 'DEVOLUCAO') debt -= Number(t.amount) || 0;
         }
       });
 
@@ -673,7 +680,7 @@
           <div class="ticket-row"><span>NOME:</span> <span><b>${tx.name.toUpperCase()}</b></span></div>
           <div class="ticket-row"><span>TIPO:</span> <span><b>${tx.method}</b></span></div>
           <div class="ticket-row"><span>OBS:</span> <span>${tx.desc_obs}</span></div>
-          <div class="valor-destaque">VALOR: R$ ${Number(tx.amount).toFixed(2)}</div>
+          <div class="valor-destaque">VALOR: R$ ${Number(tx.amount || 0).toFixed(2)}</div>
           <div class="line"></div>
           <br><br>
           <p>___________________________________</p>
@@ -712,13 +719,13 @@
       let txs = [...globalTransactions];
       
       if (currentSession) {
-          txs = txs.filter(t => t.session_id === currentSession.id);
+          txs = txs.filter(t => String(t.session_id) === String(currentSession.id));
       }
 
       const txsOrdenadas = [...txs].reverse();
 
       txsOrdenadas.forEach(t => {
-        const val = Number(t.amount);
+        const val = Number(t.amount) || 0;
         if (t.method === 'PIX') totalPix += val;
         if (t.method === 'DINHEIRO') totalDinheiro += val;
         if (t.method === 'CARTAO') totalCartao += val;
