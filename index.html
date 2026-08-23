@@ -3,267 +3,535 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerenciamento de Caixa - Poker Club</title>
+  <title>Tianchi - Gestão de Poker & Caixas</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
+
   <style>
     :root {
-      --bg-color: #121212;
-      --card-bg: #1e1e1e;
-      --text-color: #e0e0e0;
-      --accent-color: #2e7d32;
-      --border-color: #333;
+      --bg-main: #0e1e13;
+      --bg-card: #1a2e20;
+      --bg-input: #142419;
+      --border-color: #2a4733;
+      --accent: #ffd700;
+      --danger: #ff4757;
+      --success: #51cf66;
     }
 
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      margin: 0;
-      padding: 20px;
-    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-main); color: #fff; padding: 20px; max-width: 1050px; margin: auto; }
+    
+    /* LOGIN OVERLAY */
+    #login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(14, 30, 19, 0.95); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .login-card { background: var(--bg-card); border: 2px solid var(--accent); padding: 30px; border-radius: 8px; width: 320px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
+    .login-card h2 { color: var(--accent); margin-top: 0; }
+    .login-card input { width: 90%; margin-bottom: 12px; padding: 10px; }
 
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
+    h1.main-title { color: var(--accent); text-align: center; margin: 10px 0 20px 0; font-size: 2.5rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7); }
+    
+    .status-bar { background: var(--bg-card); padding: 10px 15px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .status-badge { padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.9rem; }
+    .status-aberta { background: #2b8a3e; color: #fff; }
+    .status-fechada { background: #c92a2a; color: #fff; }
 
-    .dashboard {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
-    }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+    .tab-btn { background: var(--bg-card); color: #aaa; border: 1px solid var(--border-color); padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+    .tab-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
-    .card {
-      background: var(--card-bg);
-      padding: 15px 20px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-    }
+    .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 15px; }
+    .card { padding: 12px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border-color); text-align: center; }
+    .card h4 { margin: 0 0 5px 0; font-size: 0.85rem; color: #aaa; }
+    .card .val { font-size: 1.2rem; font-weight: bold; }
+    .val-caixa { color: var(--success); }
+    .val-vale { color: #ff6b6b; }
+    .val-rake { color: #4dabf7; }
 
-    .card h3 {
-      margin: 0 0 10px 0;
-      font-size: 0.9rem;
-      color: #aaa;
-    }
+    .search-box { background: var(--bg-input); padding: 12px; border-radius: 6px; border: 1px solid var(--accent); margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .search-box select { flex: 1; min-width: 200px; padding: 8px; border-radius: 4px; border: 1px solid #333; background: var(--bg-main); color: #fff; }
+    .search-result { font-weight: bold; font-size: 1.1rem; color: var(--accent); }
 
-    .card .value {
-      font-size: 1.5rem;
-      font-weight: bold;
-    }
+    .top-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    .right-btns { display: flex; gap: 8px; }
 
-    .form-container, .table-container {
-      background: var(--card-bg);
-      padding: 20px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      margin-bottom: 25px;
-    }
+    form { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    input, select { padding: 8px; border-radius: 4px; border: 1px solid #333; background: var(--bg-card); color: #fff; }
+    input[type="text"] { flex: 2; min-width: 150px; }
+    input[type="number"] { flex: 1; min-width: 80px; }
+    select { flex: 1; min-width: 150px; }
+    
+    button { background: var(--accent); color: #000; border: none; padding: 8px 12px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+    button:hover { opacity: 0.9; }
+    .btn-cancel { background: #6c757d; color: #fff; display: none; }
+    .btn-print-all { background: #17a2b8; color: #fff; }
+    .btn-sync { background: #28a745; color: #fff; }
+    .btn-session { background: #e8590c; color: #fff; }
+    .btn-edit { background: #17a2b8; color: #fff; padding: 4px 8px; font-size: 0.8rem; }
+    .btn-del { background: var(--danger); color: #fff; padding: 4px 8px; font-size: 0.8rem; }
+    .btn-pay { background: var(--success); color: #000; padding: 4px 8px; font-size: 0.8rem; font-weight: bold; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid var(--border-color); padding: 8px; text-align: left; }
+    th { background: var(--bg-card); color: var(--accent); }
+    
+    .badge-vale { color: #ff6b6b; font-weight: bold; }
+    .badge-dinheiro { color: var(--success); font-weight: bold; }
+    .badge-cartao { color: #4dabf7; font-weight: bold; }
+    .badge-pix { color: #cc5de8; font-weight: bold; }
+    .badge-paga-vale { color: #fcc419; font-weight: bold; }
+    .badge-devolucao { color: #ff922b; font-weight: bold; }
+    .badge-despesa { color: var(--danger); font-weight: bold; }
+    .badge-rake { color: #4dabf7; font-weight: bold; }
+    
+    #print-area { display: none; }
 
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 15px;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .form-group label {
-      font-size: 0.85rem;
-      margin-bottom: 5px;
-    }
-
-    input, select, button {
-      padding: 10px;
-      border-radius: 4px;
-      border: 1px solid var(--border-color);
-      background-color: #2a2a2a;
-      color: #fff;
-    }
-
-    button.btn-add {
-      background-color: var(--accent-color);
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      margin-top: 20px;
-    }
-
-    button.btn-add:hover {
-      background-color: #388e3c;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 12px;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    th {
-      background-color: #252525;
-    }
-
-    .badge-dinheiro { background: #1b5e20; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
-    .badge-cartao { background: #0d47a1; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
-    .badge-pix { background: #4a148c; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
-    .badge-vale { background: #b71c1c; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
-    .badge-paga-vale { background: #e65100; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
-    .badge-devolucao { background: #006064; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
-    .badge-despesa { background: #880e4f; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
-    .badge-rake { background: #f57f17; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
-
-    .btn-del, .btn-edit {
-      border: none;
-      padding: 5px 8px;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    .btn-del { background: #c62828; }
-    .btn-edit { background: #1565c0; }
-
-    .filters {
-      display: flex;
-      gap: 15px;
-      margin-bottom: 15px;
+    @media print {
+      @page { margin: 0; }
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { display: block !important; position: absolute; left: 0; top: 0; color: #000; font-family: 'Courier New', monospace; font-weight: bold; width: 80mm; font-size: 9pt; }
+      .ticket { padding: 8px; text-align: center; }
+      .ticket h2 { font-size: 16pt; margin: 5px 0; text-transform: uppercase; }
+      .ticket h3 { font-size: 12pt; margin: 3px 0; }
+      .ticket-row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 9pt; }
+      .print-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 8pt; text-align: left; }
+      .print-table th, .print-table td { border-bottom: 1px dashed #000; padding: 3px 0; color: #000; }
+      .line { border-bottom: 2px solid #000; margin: 8px 0; }
+      .valor-destaque { font-size: 13pt; margin: 8px 0; border: 2px solid #000; padding: 4px; }
+      .cut-space { height: 60px; display: block; }
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h2>Sistema de Caixa - Poker Club</h2>
-
-    <!-- Dashboard -->
-    <div class="dashboard">
-      <div class="card">
-        <h3>Caixa Líquido</h3>
-        <div class="value" id="totalEntradas">R$ 0.00</div>
-      </div>
-      <div class="card">
-        <h3>Total Rake (Casa)</h3>
-        <div class="value" id="totalRake">R$ 0.00</div>
-      </div>
-      <div class="card">
-        <h3>Vales Pendentes</h3>
-        <div class="value" id="totalVales">R$ 0.00</div>
-      </div>
-    </div>
-
-    <!-- Formulário de Transação -->
-    <div class="form-container">
-      <h3>Novo Lançamento</h3>
-      <form id="txForm">
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Jogador / Destino</label>
-            <input type="text" id="txName" required placeholder="Nome do jogador">
-          </div>
-          <div class="form-group">
-            <label>Tipo de Método</label>
-            <select id="txMethod">
-              <option value="DINHEIRO">Dinheiro</option>
-              <option value="PIX">PIX</option>
-              <option value="CARTAO">Cartão</option>
-              <option value="VALE">Vale (Ficha fiado)</option>
-              <option value="PAGAR_VALE">Pagamento de Vale</option>
-              <option value="DEVOLUCAO">Devolução de Ficha</option>
-              <option value="RAKE">Rake da Casa</option>
-              <option value="DESPESA">Despesa</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Valor (R$)</label>
-            <input type="number" step="0.01" id="txAmount" required placeholder="0.00">
-          </div>
-          <div class="form-group">
-            <label>Observação</label>
-            <input type="text" id="txObs" placeholder="Ex: Mesa 1, Rebuy, etc.">
-          </div>
-          <button type="submit" class="btn-add">Adicionar</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Tabela de Transações -->
-    <div class="table-container">
-      <h3>Histórico de Transações</h3>
-      
-      <div class="filters">
-        <input type="text" id="filterTablePlayer" placeholder="Filtrar por nome..." oninput="renderTable()">
-        <select id="filterSession" onchange="renderTable()">
-          <option value="todas">Todas as Sessões</option>
-          <option value="atual" selected>Sessão Atual</option>
-        </select>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Data/Hora</th>
-            <th>Nome</th>
-            <th>Método</th>
-            <th>Obs</th>
-            <th>Valor</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
+  <!-- AUTH / LOGIN OVERLAY -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <h2>♣ TIANCHI 🌐</h2>
+      <p style="font-size: 0.85rem; color:#aaa;">Autenticação do Caixa</p>
+      <input type="text" id="loginUser" placeholder="Usuário (admin)">
+      <input type="password" id="loginPass" placeholder="Senha (123)">
+      <button onclick="login()" style="width: 100%;">Entrar no Sistema</button>
     </div>
   </div>
 
-  <script>
-    let globalTransactions = JSON.parse(localStorage.getItem('poker_txs')) || [];
-    let currentSession = { id: 1 }; // Exemplo de sessão ativa ID 1
+  <h1 class="main-title">♣ TIANCHI POKER 🌐</h1>
 
-    document.getElementById('txForm').addEventListener('submit', function(e) {
-      e.preventDefault();
+  <!-- STATUS DA SESSÃO / FECHAMENTO DA MESA -->
+  <div class="status-bar">
+    <div>
+      <span>Caixa/Sessão: </span>
+      <span id="sessionStatusBadge" class="status-badge status-fechada">FECHADO</span>
+      <span id="sessionInfo" style="font-size: 0.85rem; margin-left: 10px; color: #aaa;"></span>
+    </div>
+    <div>
+      <!-- BOTÃO PRINCIPAL DE FECHAMENTO -->
+      <button id="btnToggleSession" class="btn-session" onclick="toggleSession()">🔓 Abrir Caixa</button>
+      <button onclick="logout()" style="background: #444; color: #fff; margin-left: 5px;">Sair</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('caixa')">💵 Movimentação de Caixa</button>
+    <button class="tab-btn" onclick="switchTab('jogadores')">👤 Jogadores & Saldos</button>
+  </div>
+
+  <!-- ABA 1: CAIXA -->
+  <div id="tab-caixa" class="tab-content active">
+    <div class="summary-cards">
+      <div class="card">
+        <h4>Caixa Líquido (Entradas - Saídas)</h4>
+        <div class="val val-caixa" id="totalEntradas">R$ 0,00</div>
+      </div>
+      <div class="card">
+        <h4>Comissão da Casa (Rake)</h4>
+        <div class="val val-rake" id="totalRake">R$ 0,00</div>
+      </div>
+      <div class="card">
+        <h4>Vales Em Aberto (Pendentes)</h4>
+        <div class="val val-vale" id="totalVales">R$ 0,00</div>
+      </div>
+    </div>
+
+    <div class="search-box">
+      <label>🔍 <b>Consultar Dívida/Crédito:</b></label>
+      <select id="searchPlayer" onchange="calculatePlayerDebt()">
+        <option value="">-- Selecione o Jogador --</option>
+      </select>
+      <div class="search-result" id="playerDebtResult">Saldo: R$ 0,00</div>
+    </div>
+
+    <div class="top-actions">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div>
+          <label style="font-size: 0.8rem; display: block;">Filtrar Jogador:</label>
+          <select id="filterTablePlayer" onchange="renderTable()" style="padding: 4px;">
+            <option value="">Todos os Jogadores</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; display: block;">Filtrar Sessão:</label>
+          <select id="filterSession" onchange="renderTable()" style="padding: 4px;">
+            <option value="atual">Sessão Atual</option>
+            <option value="todas">Todas as Sessões</option>
+          </select>
+        </div>
+      </div>
+      <div class="right-btns">
+        <button class="btn-sync" onclick="syncAll()">🔄 Atualizar</button>
+        <!-- BOTÃO SECUNDÁRIO APENAS PARA IMPRIMIR -->
+        <button class="btn-print-all" onclick="printAll()">🖨️ Imprimir Fechamento de Caixa</button>
+      </div>
+    </div>
+
+    <form id="pokerForm">
+      <select id="playerSelect" required>
+        <option value="">Selecione o Jogador</option>
+      </select>
       
-      const newTx = {
-        id: Date.now(),
-        session_id: currentSession.id,
-        date: new Date().toLocaleString('pt-BR'),
-        name: document.getElementById('txName').value.trim(),
-        method: document.getElementById('txMethod').value,
-        amount: parseFloat(document.getElementById('txAmount').value),
-        desc_obs: document.getElementById('txObs').value
-      };
+      <select id="method" onchange="handleMethodChange()">
+        <option value="PIX">📱 PIX (Entrada)</option>
+        <option value="DINHEIRO">💵 Dinheiro (Entrada)</option>
+        <option value="CARTAO">💳 Cartão (Entrada)</option>
+        <option value="VALE">📝 Vale / Pegou Ficha (Dívida)</option>
+        <option value="PAGAR_VALE">💚 Pagar Vale em Dinheiro/PIX</option>
+        <option value="DEVOLUCAO">🔄 Devolução Ficha (Abater Vale / Saída)</option>
+        <option value="RAKE">🎰 Rake / Taxa da Casa (Comissão)</option>
+        <option value="DESPESA">🔻 Retirada para Despesa (Saída)</option>
+      </select>
 
-      globalTransactions.push(newTx);
-      saveAndRender();
-      this.reset();
+      <input type="number" id="amount" step="0.01" placeholder="Valor (R$)" required>
+      <input type="text" id="desc" placeholder="Obs ex: Compra de fichas / Bebida">
+      <button type="submit" id="btnSubmitForm">Lançar Operação</button>
+    </form>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data/Hora</th>
+          <th>Jogador / Origem</th>
+          <th>Forma</th>
+          <th>Descrição</th>
+          <th>Valor</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ABA 2: CADASTRO DE JOGADORES -->
+  <div id="tab-jogadores" class="tab-content">
+    <h3 id="playerFormTitle">Novo Jogador</h3>
+    <form id="playerForm">
+      <input type="hidden" id="editPlayerId">
+      <input type="text" id="newPlayerName" placeholder="Nome Completo" required>
+      <input type="text" id="newPlayerPhone" placeholder="Telefone / WhatsApp">
+      <input type="text" id="newPlayerPix" placeholder="Chave PIX">
+      <div>
+        <label style="font-size: 0.8rem; display:block;">Nascimento:</label>
+        <input type="date" id="newPlayerBirth">
+      </div>
+      <button type="submit" id="btnSavePlayer">Salvar Jogador</button>
+      <button type="button" class="btn-cancel" id="btnCancelEdit" onclick="cancelPlayerEdit()">Cancelar</button>
+    </form>
+
+    <h3 style="margin-top:20px;">Jogadores & Balanço Global de Vales</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Telefone</th>
+          <th>Chave PIX</th>
+          <th>Saldo Atual (Vales/Créditos)</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="playerTableBody"></tbody>
+    </table>
+  </div>
+
+  <div id="print-area"></div>
+
+  <script>
+    const SUPABASE_URL = "https://jmixkymwdbtbrihxoigk.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptaXhreW13ZGJ0YnJpaHhvaWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNTUyMzQsImV4cCI6MjEwMjkzMTIzNH0.4T8EVhYR9X0bTBI99H-VszMupJhHy2-p3ToXtB2iErM";
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let globalPlayers = [];
+    let globalTransactions = [];
+    let currentSession = null;
+    let currentUser = null;
+
+    // LOGIN
+    async function login() {
+      const u = document.getElementById('loginUser').value.trim();
+      const p = document.getElementById('loginPass').value.trim();
+
+      const { data, error } = await supabaseClient.from('users').select('*').eq('username', u).eq('password', p).single();
+
+      if (error || !data) {
+        alert('Usuário ou senha incorretos!');
+      } else {
+        currentUser = data;
+        document.getElementById('login-overlay').style.display = 'none';
+        syncAll();
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      document.getElementById('login-overlay').style.display = 'flex';
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+      if (tabName === 'caixa') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('tab-caixa').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tab-jogadores').classList.add('active');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupRealtime();
     });
 
-    function deleteTx(id) {
-      if (confirm("Deseja realmente excluir esta transação?")) {
-        globalTransactions = globalTransactions.filter(t => t.id !== id);
-        saveAndRender();
+    async function syncAll() {
+      await fetchCurrentSession();
+      await fetchPlayers();
+      await fetchTransactions();
+    }
+
+    // SESSÕES / MESA
+    async function fetchCurrentSession() {
+      const { data } = await supabaseClient.from('sessions').select('*').eq('status', 'aberta').order('id', { ascending: false }).limit(1);
+      
+      const badge = document.getElementById('sessionStatusBadge');
+      const info = document.getElementById('sessionInfo');
+      const btn = document.getElementById('btnToggleSession');
+
+      if (data && data.length > 0) {
+        currentSession = data[0];
+        badge.innerText = "CAIXA ABERTO";
+        badge.className = "status-badge status-aberta";
+        info.innerText = `Aberto em: ${currentSession.opened_at}`;
+        
+        btn.innerText = "🔒 Realizar Fechamento de Caixa";
+        btn.style.background = "#c92a2a";
+      } else {
+        currentSession = null;
+        badge.innerText = "CAIXA FECHADO";
+        badge.className = "status-badge status-fechada";
+        info.innerText = "Nenhum caixa em andamento";
+        
+        btn.innerText = "🔓 Abrir Novo Caixa";
+        btn.style.background = "#e8590c";
       }
     }
 
-    function printSingle(id) {
-      const tx = globalTransactions.find(t => t.id === id);
-      if (tx) {
-        alert(`Imprimindo Comprovante:\n\nID: ${tx.id}\nNome: ${tx.name}\nTipo: ${tx.method}\nValor: R$ ${tx.amount.toFixed(2)}\nData: ${tx.date}`);
+    async function toggleSession() {
+      if (currentSession) {
+        if (!confirm('Deseja realmente REALIZAR O FECHAMENTO DO CAIXA e imprimir o relatório completo?')) return;
+        
+        await supabaseClient.from('sessions').update({ 
+          status: 'fechada', 
+          closed_at: new Date().toLocaleString('pt-BR') 
+        }).eq('id', currentSession.id);
+
+        printAll();
+        syncAll();
+      } else {
+        const openedAt = new Date().toLocaleString('pt-BR');
+        await supabaseClient.from('sessions').insert([{ opened_at: openedAt, status: 'aberta' }]);
+        syncAll();
       }
     }
 
-    function saveAndRender() {
-      localStorage.setItem('poker_txs', JSON.stringify(globalTransactions));
+    async function fetchPlayers() {
+      const { data } = await supabaseClient.from('players').select('*').order('name');
+      globalPlayers = data || [];
+      renderPlayers();
+    }
+
+    async function fetchTransactions() {
+      const { data } = await supabaseClient.from('transactions').select('*').order('id', { ascending: false });
+      globalTransactions = data || [];
       renderTable();
     }
 
+    function setupRealtime() {
+      supabaseClient.channel('db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => fetchPlayers())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchTransactions())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => syncAll())
+        .subscribe();
+    }
+
+    function handleMethodChange() {
+      const method = document.getElementById('method').value;
+      const playerSelect = document.getElementById('playerSelect');
+      
+      if (method === 'RAKE' || method === 'DESPESA') {
+        playerSelect.required = false;
+        playerSelect.disabled = true;
+      } else {
+        playerSelect.required = true;
+        playerSelect.disabled = false;
+      }
+    }
+
+    // OPERAÇÕES DE JOGADORES
+    const playerForm = document.getElementById('playerForm');
+    playerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('editPlayerId').value;
+      const name = document.getElementById('newPlayerName').value.trim();
+      const phone = document.getElementById('newPlayerPhone').value.trim() || '-';
+      const pix = document.getElementById('newPlayerPix').value.trim() || '-';
+      const birth = document.getElementById('newPlayerBirth').value || null;
+
+      if (editId) {
+        await supabaseClient.from('players').update({ name, phone, pix, birth }).eq('id', editId);
+      } else {
+        if (globalPlayers.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+          alert('Este jogador já está cadastrado!');
+          return;
+        }
+        await supabaseClient.from('players').insert([{ name, phone, pix, birth }]);
+      }
+
+      cancelPlayerEdit();
+      syncAll();
+    });
+
+    function renderPlayers() {
+      const playerTableBody = document.getElementById('playerTableBody');
+      const playerSelect = document.getElementById('playerSelect');
+      const searchPlayerSelect = document.getElementById('searchPlayer');
+      const filterTablePlayer = document.getElementById('filterTablePlayer');
+
+      const currentFilter = filterTablePlayer.value;
+
+      playerTableBody.innerHTML = '';
+      playerSelect.innerHTML = '<option value="">Selecione o Jogador</option>';
+      searchPlayerSelect.innerHTML = '<option value="">-- Selecione o Jogador --</option>';
+      filterTablePlayer.innerHTML = '<option value="">Todos os Jogadores</option>';
+
+      const debts = {};
+      globalTransactions.forEach(t => {
+        if (t.name && t.name !== 'CASA / RAKE' && t.name !== 'DESPESA CASA') {
+          if (!debts[t.name]) debts[t.name] = 0;
+          if (t.method === 'VALE') debts[t.name] += Number(t.amount);
+          if (t.method === 'PAGAR_VALE' || t.method === 'DEVOLUCAO') debts[t.name] -= Number(t.amount);
+        }
+      });
+
+      globalPlayers.forEach(p => {
+        const saldo = debts[p.name] || 0;
+        let saldoBadge = `<span style="color:${saldo > 0 ? '#ff6b6b' : '#51cf66'}; font-weight:bold;">${saldo > 0 ? 'Devendo R$ ' + saldo.toFixed(2) : (saldo < 0 ? 'Crédito R$ ' + Math.abs(saldo).toFixed(2) : 'Quitado (R$ 0,00)')}</span>`;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><b>${p.name}</b></td>
+          <td>${p.phone}</td>
+          <td>${p.pix || '-'}</td>
+          <td>${saldoBadge}</td>
+          <td style="white-space:nowrap;">
+            ${saldo > 0 ? `<button class="btn-pay" onclick="quickPay('${p.name}', ${saldo})">💚 Quitar</button>` : ''}
+            <button class="btn-edit" onclick="editPlayer(${p.id})">✏️</button>
+            <button class="btn-del" onclick="deletePlayer(${p.id})">X</button>
+          </td>
+        `;
+        playerTableBody.appendChild(row);
+
+        playerSelect.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+        searchPlayerSelect.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+        filterTablePlayer.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+      });
+
+      filterTablePlayer.value = currentFilter;
+    }
+
+    async function quickPay(playerName, amount) {
+      if (!confirm(`Confirmar o recebimento de R$ ${amount.toFixed(2)} do jogador ${playerName}?`)) return;
+
+      const date = new Date().toLocaleString('pt-BR');
+      const sessionId = currentSession ? currentSession.id : null;
+
+      await supabaseClient.from('transactions').insert([{
+        date, name: playerName, method: 'PAGAR_VALE', amount, desc_obs: 'Acerto Rápido de Conta', session_id: sessionId
+      }]);
+
+      syncAll();
+    }
+
+    function editPlayer(id) {
+      const p = globalPlayers.find(item => item.id === id);
+      if (!p) return;
+
+      document.getElementById('editPlayerId').value = p.id;
+      document.getElementById('newPlayerName').value = p.name;
+      document.getElementById('newPlayerPhone').value = p.phone === '-' ? '' : p.phone;
+      document.getElementById('newPlayerPix').value = p.pix === '-' ? '' : (p.pix || '');
+      document.getElementById('newPlayerBirth').value = p.birth || '';
+
+      document.getElementById('playerFormTitle').innerText = '✏️ Editar Jogador';
+      document.getElementById('btnSavePlayer').innerText = 'Atualizar';
+      document.getElementById('btnCancelEdit').style.display = 'inline-block';
+    }
+
+    function cancelPlayerEdit() {
+      document.getElementById('editPlayerId').value = '';
+      playerForm.reset();
+      document.getElementById('playerFormTitle').innerText = 'Novo Jogador';
+      document.getElementById('btnSavePlayer').innerText = 'Salvar Jogador';
+      document.getElementById('btnCancelEdit').style.display = 'none';
+    }
+
+    async function deletePlayer(id) {
+      if (!confirm('Deseja excluir este jogador?')) return;
+      await supabaseClient.from('players').delete().eq('id', id);
+      syncAll();
+    }
+
+    // FORMULÁRIO DE CAIXA
+    const form = document.getElementById('pokerForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const method = document.getElementById('method').value;
+      let name = document.getElementById('playerSelect').value;
+      const amount = parseFloat(document.getElementById('amount').value) || 0;
+      const desc_obs = document.getElementById('desc').value.trim() || '-';
+      const date = new Date().toLocaleString('pt-BR');
+
+      if (method === 'RAKE') name = 'CASA / RAKE';
+      if (method === 'DESPESA') name = 'DESPESA CASA';
+
+      const sessionId = currentSession ? currentSession.id : null;
+
+      const { error } = await supabaseClient.from('transactions').insert([
+        { date, name, method, amount, desc_obs, session_id: sessionId }
+      ]);
+
+      if (error) alert('Erro ao lançar: ' + error.message);
+      else {
+        form.reset();
+        handleMethodChange();
+        syncAll();
+      }
+    });
+
+    // CÁLCULO DE CAIXA CORRIGIDO
     function renderTable() {
       const tableBody = document.getElementById('tableBody');
-      const filterPlayer = document.getElementById('filterTablePlayer').value.toLowerCase();
+      const filterPlayer = document.getElementById('filterTablePlayer').value;
       const filterSession = document.getElementById('filterSession').value;
 
       tableBody.innerHTML = '';
@@ -275,7 +543,7 @@
       }
 
       if (filterPlayer) {
-        txs = txs.filter(t => t.name.toLowerCase().includes(filterPlayer));
+        txs = txs.filter(t => t.name === filterPlayer);
       }
 
       let totalEntradasBrutas = 0;
@@ -283,30 +551,26 @@
       let totalRakeTotal = 0;
       const playerVales = {};
 
-      // 1. Processa em ordem CRONOLÓGICA (do ID mais antigo para o mais novo) para calcular os saldos corretamente
+      // Ordena cronologicamente por ID para calcular saldos na ordem certa
       const txsCronologicas = [...txs].sort((a, b) => a.id - b.id);
 
       txsCronologicas.forEach(tx => {
         const val = Number(tx.amount);
         if (!playerVales[tx.name]) playerVales[tx.name] = 0;
 
-        // Entradas reais de dinheiro no caixa
         if (['DINHEIRO', 'CARTAO', 'PIX', 'PAGAR_VALE'].includes(tx.method)) {
           totalEntradasBrutas += val;
         }
 
-        // Rake arrecadado pela casa
         if (tx.method === 'RAKE') {
           totalRakeTotal += val;
           totalEntradasBrutas += val;
         }
 
-        // Despesas operacionais do clube
         if (tx.method === 'DESPESA') {
           totalSaidasCaixa += val;
         }
 
-        // Gestão de Vales (Fiado)
         if (tx.method === 'VALE') {
           playerVales[tx.name] += val;
         }
@@ -315,24 +579,19 @@
           playerVales[tx.name] = Math.max(0, playerVales[tx.name] - val);
         }
 
-        // Devolução de Fichas (Cashout)
         if (tx.method === 'DEVOLUCAO') {
           const valeAtual = playerVales[tx.name] || 0;
           if (val <= valeAtual) {
-            // Abate do vale pendente sem sair dinheiro físico do caixa
             playerVales[tx.name] -= val;
           } else {
-            // Paga o vale pendente e a diferença é paga em dinheiro ao jogador (Saída do Caixa)
             totalSaidasCaixa += (val - valeAtual);
             playerVales[tx.name] = 0;
           }
         }
       });
 
-      // 2. Renderiza na tabela do MAIS RECENTE para o MAIS ANTIGO
-      const txsExibicao = [...txs].reverse();
-
-      txsExibicao.forEach(tx => {
+      // Renderiza na tabela do mais recente para o mais antigo
+      txs.forEach(tx => {
         let methodClass = 'badge-vale';
         let labelText = tx.method;
 
@@ -348,8 +607,8 @@
         row.innerHTML = `
           <td style="font-size:0.8rem;">${tx.date}</td>
           <td><b>${tx.name}</b></td>
-          <td><span class="${methodClass}">${labelText}</span></td>
-          <td>${tx.desc_obs || '-'}</td>
+          <td class="${methodClass}">${labelText}</td>
+          <td>${tx.desc_obs}</td>
           <td>R$ ${Number(tx.amount).toFixed(2)}</td>
           <td style="white-space:nowrap;">
             <button class="btn-edit" onclick="printSingle(${tx.id})">🖨️</button>
@@ -365,10 +624,147 @@
       document.getElementById('totalEntradas').innerText = `R$ ${caixaLiquido.toFixed(2)}`;
       document.getElementById('totalRake').innerText = `R$ ${totalRakeTotal.toFixed(2)}`;
       document.getElementById('totalVales').innerText = `R$ ${totalValesPendentes.toFixed(2)}`;
+      
+      calculatePlayerDebt();
     }
 
-    // Inicialização da tela
-    renderTable();
+    function calculatePlayerDebt() {
+      const selectedPlayer = document.getElementById('searchPlayer').value;
+      const resultDiv = document.getElementById('playerDebtResult');
+
+      if (!selectedPlayer) {
+        resultDiv.innerText = 'Saldo: R$ 0,00';
+        return;
+      }
+
+      let debt = 0;
+      globalTransactions.forEach(t => {
+        if (t.name === selectedPlayer) {
+          if (t.method === 'VALE') debt += Number(t.amount);
+          if (t.method === 'PAGAR_VALE' || t.method === 'DEVOLUCAO') debt -= Number(t.amount);
+        }
+      });
+
+      if (debt < 0) {
+        resultDiv.innerText = `Crédito (A Pagar): R$ ${Math.abs(debt).toFixed(2)}`;
+      } else {
+        resultDiv.innerText = `Devendo em Vales: R$ ${debt.toFixed(2)}`;
+      }
+    }
+
+    async function deleteTx(id) {
+      if (!confirm('Tem certeza de que deseja excluir este lançamento?')) return;
+      await supabaseClient.from('transactions').delete().eq('id', id);
+      syncAll();
+    }
+
+    // IMPRESSÃO DE TICKET INDIVIDUAL
+    function printSingle(id) {
+      const tx = globalTransactions.find(t => t.id === id);
+      if (!tx) return;
+
+      const printArea = document.getElementById('print-area');
+      printArea.innerHTML = `
+        <div class="ticket">
+          <h2>TIANCHI POKER</h2>
+          <h3>COMPROVANTE</h3>
+          <div class="line"></div>
+          <div class="ticket-row"><span>DATA:</span> <span>${tx.date}</span></div>
+          <div class="ticket-row"><span>NOME:</span> <span><b>${tx.name.toUpperCase()}</b></span></div>
+          <div class="ticket-row"><span>TIPO:</span> <span><b>${tx.method}</b></span></div>
+          <div class="ticket-row"><span>OBS:</span> <span>${tx.desc_obs}</span></div>
+          <div class="valor-destaque">VALOR: R$ ${Number(tx.amount).toFixed(2)}</div>
+          <div class="line"></div>
+          <br><br>
+          <p>___________________________________</p>
+          <p>Assinatura</p>
+          <div class="cut-space"></div>
+        </div>
+      `;
+      window.print();
+    }
+
+    // IMPRESSÃO COMPLETA DO FECHAMENTO DE CAIXA
+    function printAll() {
+      const printArea = document.getElementById('print-area');
+      let html = `
+        <div class="ticket">
+          <h2>TIANCHI POKER</h2>
+          <h3>FECHAMENTO DE CAIXA</h3>
+          <p>Emitido em: ${new Date().toLocaleString('pt-BR')}</p>
+          <div class="line"></div>
+          <p><b>MOVIMENTAÇÕES DETALHADAS</b></p>
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Obs</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      let totalPix = 0, totalDinheiro = 0, totalCartao = 0, totalVale = 0, totalPagoVale = 0, totalRake = 0, totalDespesas = 0;
+
+      let txs = [...globalTransactions];
+      
+      if (currentSession) {
+          txs = txs.filter(t => t.session_id === currentSession.id);
+      }
+
+      const txsOrdenadas = [...txs].reverse();
+
+      txsOrdenadas.forEach(t => {
+        const val = Number(t.amount);
+        if (t.method === 'PIX') totalPix += val;
+        if (t.method === 'DINHEIRO') totalDinheiro += val;
+        if (t.method === 'CARTAO') totalCartao += val;
+        if (t.method === 'VALE') totalVale += val;
+        if (t.method === 'PAGAR_VALE') totalPagoVale += val;
+        if (t.method === 'RAKE') totalRake += val;
+        if (t.method === 'DESPESA') totalDespesas += val;
+
+        const hora = t.date ? t.date.split(' ')[1] || t.date : '-';
+
+        html += `
+          <tr>
+            <td>${hora}</td>
+            <td>${t.name}</td>
+            <td>${t.method}</td>
+            <td>${t.desc_obs}</td>
+            <td>R$ ${val.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      const totalEntradas = totalPix + totalDinheiro + totalCartao + totalPagoVale + totalRake;
+      const caixaFinal = totalEntradas - totalDespesas;
+
+      html += `
+            </tbody>
+          </table>
+          <div class="line"></div>
+          <p><b>RESUMO DO FECHAMENTO</b></p>
+          <div class="ticket-row"><span>PIX (Entradas):</span> <span>R$ ${totalPix.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>DINHEIRO (Entradas):</span> <span>R$ ${totalDinheiro.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>CARTÃO (Entradas):</span> <span>R$ ${totalCartao.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>VALES QUITADOS:</span> <span>R$ ${totalPagoVale.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>RAKE DA CASA:</span> <span>R$ ${totalRake.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>DESPESAS (Saídas):</span> <span>- R$ ${totalDespesas.toFixed(2)}</span></div>
+          <div class="line"></div>
+          <div class="ticket-row" style="font-size: 11pt; font-weight: bold;">
+            <span>CAIXA LÍQUIDO FINAL:</span> <span>R$ ${caixaFinal.toFixed(2)}</span>
+          </div>
+          <div class="cut-space"></div>
+        </div>
+      `;
+
+      printArea.innerHTML = html;
+      window.print();
+    }
   </script>
 </body>
 </html>
