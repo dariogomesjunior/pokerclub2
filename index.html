@@ -153,7 +153,7 @@
   <div id="print-area"></div>
 
   <script>
-    // CONFIGURAÇÃO SUPABASE (Apenas a URL foi corrigida sem /rest/v1/)
+    // CONFIGURAÇÃO SUPABASE (URL Corrigida)
     const SUPABASE_URL = 'https://jmixkymwdbtbrihxoigk.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptaXhreW13ZGJ0YnJpaHhvaWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNTUyMzQsImV4cCI6MjEwMjkzMTIzNH0.4T8EVhYR9X0bTBI99H-VszMupJhHy2-p3ToXtB2iErM';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -188,7 +188,9 @@
         .eq('password', p)
         .maybeSingle();
 
-      if (error || !data) {
+      if (error) {
+        alert('Erro ao consultar banco de dados: ' + error.message);
+      } else if (!data) {
         alert('Usuário ou senha incorretos.');
       } else {
         currentUser = data;
@@ -256,7 +258,7 @@
       }
     });
 
-    // FUNÇÃO DE IMPRESSÃO ORIGINAL RESTAURADA
+    // FUNÇÃO DE IMPRESSÃO - COM DETALHAMENTO DE OPERAÇÕES
     function printAll() {
       const printArea = document.getElementById('print-area');
       let txs = [...globalTransactions];
