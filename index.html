@@ -536,7 +536,6 @@
 
       let txs = [...globalTransactions];
 
-      // CORREÇÃO CRÍTICA: Comparar IDs como String para evitar incompatibilidade entre número e string
       if (filterSession === 'atual' && currentSession) {
         txs = txs.filter(t => String(t.session_id) === String(currentSession.id));
       }
@@ -589,14 +588,13 @@
           if (val <= valeAtual) {
             playerVales[tx.name] -= val;
           } else {
-            // O que exceder o vale atual é pago ao jogador (saída do caixa)
             totalSaidasCaixa += (val - valeAtual);
             playerVales[tx.name] = 0;
           }
         }
       });
 
-      // Renderizar a tabela no formato original
+      // Renderizar a tabela
       txs.forEach(tx => {
         let methodClass = 'badge-vale';
         let labelText = tx.method;
@@ -714,7 +712,8 @@
             <tbody>
       `;
 
-      let totalPix = 0, totalDinheiro = 0, totalCartao = 0, totalVale = 0, totalPagoVale = 0, totalRake = 0, totalDespesas = 0;
+      let totalPix = 0, totalDinheiro = 0, totalCartao = 0, totalValeLancado = 0, totalPagoVale = 0, totalRake = 0, totalDespesas = 0;
+      let totalDevolucaoPagos = 0;
 
       let txs = [...globalTransactions];
       
@@ -722,18 +721,40 @@
           txs = txs.filter(t => String(t.session_id) === String(currentSession.id));
       }
 
-      const txsOrdenadas = [...txs].reverse();
+      const txsCronologicas = [...txs].sort((a, b) => Number(a.id) - Number(b.id));
+      const playerVales = {};
 
-      txsOrdenadas.forEach(t => {
+      txsCronologicas.forEach(t => {
         const val = Number(t.amount) || 0;
+        if (!playerVales[t.name]) playerVales[t.name] = 0;
+
         if (t.method === 'PIX') totalPix += val;
         if (t.method === 'DINHEIRO') totalDinheiro += val;
         if (t.method === 'CARTAO') totalCartao += val;
-        if (t.method === 'VALE') totalVale += val;
-        if (t.method === 'PAGAR_VALE') totalPagoVale += val;
+        if (t.method === 'VALE') {
+          totalValeLancado += val;
+          playerVales[t.name] += val;
+        }
+        if (t.method === 'PAGAR_VALE') {
+          totalPagoVale += val;
+          playerVales[t.name] = Math.max(0, playerVales[t.name] - val);
+        }
         if (t.method === 'RAKE') totalRake += val;
         if (t.method === 'DESPESA') totalDespesas += val;
 
+        if (t.method === 'DEVOLUCAO') {
+          const valeAtual = playerVales[t.name] || 0;
+          if (val <= valeAtual) {
+            playerVales[t.name] -= val;
+          } else {
+            totalDevolucaoPagos += (val - valeAtual);
+            playerVales[t.name] = 0;
+          }
+        }
+      });
+
+      [...txs].reverse().forEach(t => {
+        const val = Number(t.amount) || 0;
         const hora = t.date ? t.date.split(' ')[1] || t.date : '-';
 
         html += `
@@ -747,8 +768,9 @@
         `;
       });
 
-      const totalEntradas = totalPix + totalDinheiro + totalCartao + totalPagoVale + totalRake;
-      const caixaFinal = totalEntradas - totalDespesas;
+      const totalEntradasBrutas = totalPix + totalDinheiro + totalCartao + totalPagoVale + totalRake;
+      const totalSaidasTotais = totalDespesas + totalDevolucaoPagos;
+      const caixaFinal = totalEntradasBrutas - totalSaidasTotais;
 
       html += `
             </tbody>
@@ -760,7 +782,9 @@
           <div class="ticket-row"><span>CARTÃO (Entradas):</span> <span>R$ ${totalCartao.toFixed(2)}</span></div>
           <div class="ticket-row"><span>VALES QUITADOS:</span> <span>R$ ${totalPagoVale.toFixed(2)}</span></div>
           <div class="ticket-row"><span>RAKE DA CASA:</span> <span>R$ ${totalRake.toFixed(2)}</span></div>
+          <div class="line"></div>
           <div class="ticket-row"><span>DESPESAS (Saídas):</span> <span>- R$ ${totalDespesas.toFixed(2)}</span></div>
+          <div class="ticket-row"><span>PAG. DEVOLUÇÃO FICHAS:</span> <span>- R$ ${totalDevolucaoPagos.toFixed(2)}</span></div>
           <div class="line"></div>
           <div class="ticket-row" style="font-size: 11pt; font-weight: bold;">
             <span>CAIXA LÍQUIDO FINAL:</span> <span>R$ ${caixaFinal.toFixed(2)}</span>
