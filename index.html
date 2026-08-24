@@ -98,8 +98,8 @@
         color: #000; 
         font-family: 'Courier New', monospace; 
         font-weight: bold; 
-        width: 100mm; /* Aumentado de 80mm para 100mm */
-        font-size: 12pt; /* Fonte base aumentada de 9pt para 12pt */
+        width: 100mm; 
+        font-size: 12pt; 
       }
       .ticket { padding: 12px; text-align: center; }
       .ticket h2 { font-size: 20pt; margin: 6px 0; text-transform: uppercase; }
@@ -180,16 +180,16 @@
           </select>
         </div>
         <div>
-          <label style="font-size: 0.8rem; display: block;">Filtrar Sessão:</label>
-          <select id="filterSession" onchange="renderTable()" style="padding: 4px;">
-            <option value="atual">Sessão Atual</option>
-            <option value="todas">Todas as Sessões</option>
+          <label style="font-size: 0.8rem; display: block;">Filtrar Histórico/Sessão:</label>
+          <select id="filterSession" onchange="renderTable()" style="padding: 4px; font-weight: bold; color: var(--accent);">
+            <option value="atual">Sessão Atual (Ativa)</option>
+            <option value="todas">Todas as Sessões (Histórico Geral)</option>
           </select>
         </div>
       </div>
       <div class="right-btns">
         <button class="btn-sync" onclick="syncAll()">🔄 Atualizar</button>
-        <button class="btn-print-all" onclick="printAll()">🖨️ Imprimir Fechamento de Caixa</button>
+        <button class="btn-print-all" onclick="printAll()">🖨️ Imprimir Fechamento Selecionado</button>
       </div>
     </div>
 
@@ -270,6 +270,7 @@
 
     let globalPlayers = [];
     let globalTransactions = [];
+    let globalSessions = [];
     let currentSession = null;
     let currentUser = null;
 
@@ -312,21 +313,24 @@
     });
 
     async function syncAll() {
-      await fetchCurrentSession();
+      await fetchSessions();
       await fetchPlayers();
       await fetchTransactions();
     }
 
-    // SESSÕES / MESA
-    async function fetchCurrentSession() {
-      const { data } = await supabaseClient.from('sessions').select('*').eq('status', 'aberta').order('id', { ascending: false }).limit(1);
+    // SESSÕES / HISTÓRICO DE DIAS ANTERIORES
+    async function fetchSessions() {
+      const { data } = await supabaseClient.from('sessions').select('*').order('id', { ascending: false });
+      globalSessions = data || [];
       
+      const active = globalSessions.find(s => s.status === 'aberta');
+
       const badge = document.getElementById('sessionStatusBadge');
       const info = document.getElementById('sessionInfo');
       const btn = document.getElementById('btnToggleSession');
 
-      if (data && data.length > 0) {
-        currentSession = data[0];
+      if (active) {
+        currentSession = active;
         badge.innerText = "CAIXA ABERTO";
         badge.className = "status-badge status-aberta";
         info.innerText = `Aberto em: ${currentSession.opened_at}`;
@@ -342,6 +346,25 @@
         btn.innerText = "🔓 Abrir Novo Caixa";
         btn.style.background = "#e8590c";
       }
+
+      populateSessionFilter();
+    }
+
+    function populateSessionFilter() {
+      const filterSession = document.getElementById('filterSession');
+      const selectedVal = filterSession.value;
+
+      filterSession.innerHTML = `
+        <option value="atual">Sessão Atual (Ativa)</option>
+        <option value="todas">Todas as Sessões (Histórico Geral)</option>
+      `;
+
+      globalSessions.forEach(s => {
+        const label = `Sessão #${s.id} - ${s.opened_at} (${s.status.toUpperCase()})`;
+        filterSession.innerHTML += `<option value="${s.id}">${label}</option>`;
+      });
+
+      filterSession.value = selectedVal;
     }
 
     async function toggleSession() {
@@ -547,8 +570,14 @@
 
       let txs = [...globalTransactions];
 
-      if (filterSession === 'atual' && currentSession) {
-        txs = txs.filter(t => String(t.session_id) === String(currentSession.id));
+      if (filterSession === 'atual') {
+        if (currentSession) {
+          txs = txs.filter(t => String(t.session_id) === String(currentSession.id));
+        } else {
+          txs = [];
+        }
+      } else if (filterSession !== 'todas') {
+        txs = txs.filter(t => String(t.session_id) === String(filterSession));
       }
 
       if (filterPlayer) {
@@ -694,6 +723,8 @@
     // IMPRESSÃO COMPLETA DO FECHAMENTO DE CAIXA
     function printAll() {
       const printArea = document.getElementById('print-area');
+      const filterSession = document.getElementById('filterSession').value;
+
       let html = `
         <div class="ticket">
           <h2>TIANCHI POKER</h2>
@@ -719,8 +750,14 @@
 
       let txs = [...globalTransactions];
       
-      if (currentSession) {
+      if (filterSession === 'atual') {
+        if (currentSession) {
           txs = txs.filter(t => String(t.session_id) === String(currentSession.id));
+        } else {
+          txs = [];
+        }
+      } else if (filterSession !== 'todas') {
+        txs = txs.filter(t => String(t.session_id) === String(filterSession));
       }
 
       const txsCronologicas = [...txs].sort((a, b) => Number(a.id) - Number(b.id));
